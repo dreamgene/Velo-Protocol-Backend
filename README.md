@@ -27,3 +27,7 @@ npm run migrate   # run DB migrations (velo-backend)
 
 - [Velo-Protocol-Contract](https://github.com/dreamgene/Velo-Protocol-Contract)
 - [Velo-Protocol-FrontEnd](https://github.com/dreamgene/Velo-Protocol-FrontEnd)
+
+## License
+
+MIT — see [LICENSE](LICENSE).
