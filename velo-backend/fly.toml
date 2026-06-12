@@ -1,0 +1,54 @@
+app = "velo-api-prod"
+primary_region = "lax"
+
+[build]
+  dockerfile = "Dockerfile.api"
+
+[deploy]
+  release_command = "node /app/db/migrate.js"
+
+[env]
+  PORT = "3001"
+  NODE_ENV = "production"
+  STELLAR_NETWORK = "testnet"
+  STELLAR_HORIZON_URL = "https://horizon-testnet.stellar.org"
+  USDC_ASSET_CODE = "USDC"
+  USDC_ASSET_ISSUER = "GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5"
+  OFAC_SCREENING_ENABLED = "false"
+  CORS_ORIGINS = "https://velo-frontend-pi.vercel.app,http://localhost:3000"
+  APP_URL = "https://velo-api.fly.dev"
+  PAY_URL = "https://velo-frontend-pi.vercel.app"
+
+[[services]]
+  protocol = "tcp"
+  internal_port = 3001
+
+  [[services.ports]]
+    port = 80
+    handlers = ["http"]
+    force_https = true
+
+  [[services.ports]]
+    port = 443
+    handlers = ["tls", "http"]
+
+  [services.concurrency]
+    type = "connections"
+    hard_limit = 100
+    soft_limit = 80
+
+  [[services.tcp_checks]]
+    interval = "15s"
+    timeout = "2s"
+    grace_period = "10s"
+
+  [[services.http_checks]]
+    interval = "30s"
+    timeout = "5s"
+    grace_period = "15s"
+    path = "/health"
+
+[vm]
+  memory = "512mb"
+  cpu_kind = "shared"
+  cpus = 1

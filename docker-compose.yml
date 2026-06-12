@@ -1,0 +1,67 @@
+version: '3.9'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: velo_dev
+      POSTGRES_USER: velo
+      POSTGRES_PASSWORD: velo_dev_secret
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U velo -d velo_dev']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  velo-backend:
+    build:
+      context: ./velo-backend
+      dockerfile: Dockerfile.api
+    ports:
+      - '3001:3001'
+    environment:
+      DATABASE_URL: postgresql://velo:velo_dev_secret@postgres:5432/velo_dev
+      REDIS_URL: redis://redis:6379
+    env_file:
+      - ./velo-backend/.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  velo-reconciler:
+    build:
+      context: ./velo-backend/reconciler
+      dockerfile: Dockerfile.reconciler
+    environment:
+      DATABASE_URL: postgresql://velo:velo_dev_secret@postgres:5432/velo_dev
+      REDIS_URL: redis://redis:6379
+    env_file:
+      - ./velo-backend/.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  redis_data:

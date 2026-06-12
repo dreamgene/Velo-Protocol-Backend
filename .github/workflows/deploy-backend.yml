@@ -1,0 +1,74 @@
+name: Deploy Backend
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'velo-backend/**'
+
+jobs:
+  deploy:
+    name: Build, push, deploy
+    runs-on: ubuntu-latest
+    environment: production
+    concurrency:
+      group: deploy-backend
+      cancel-in-progress: false
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ vars.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+
+      - name: Log in to ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push API image
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+          TAG: ${{ github.sha }}
+        run: |
+          docker build -f velo-backend/Dockerfile.api -t $REGISTRY/velo-api:$TAG .
+          docker push $REGISTRY/velo-api:$TAG
+
+      - name: Build and push reconciler image
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+          TAG: ${{ github.sha }}
+        run: |
+          docker build -f velo-backend/reconciler/Dockerfile.reconciler -t $REGISTRY/velo-reconciler:$TAG .
+          docker push $REGISTRY/velo-reconciler:$TAG
+
+      - name: Deploy ECS service (API)
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+          TAG: ${{ github.sha }}
+        run: |
+          aws ecs update-service \
+            --cluster ${{ vars.ECS_CLUSTER }} \
+            --service velo-api \
+            --force-new-deployment \
+            --query 'service.deployments[0].status' \
+            --output text
+
+      - name: Health gate (2 minutes)
+        run: |
+          for i in $(seq 1 24); do
+            STATUS=$(curl -sf ${{ vars.API_URL }}/health | jq -r '.status' || echo "fail")
+            if [ "$STATUS" = "ok" ]; then
+              echo "Health check passed"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "Health check failed — triggering rollback"
+          aws ecs update-service \
+            --cluster ${{ vars.ECS_CLUSTER }} \
+            --service velo-api \
+            --task-definition velo-api-previous
+          exit 1

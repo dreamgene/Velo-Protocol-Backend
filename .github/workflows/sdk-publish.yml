@@ -1,0 +1,31 @@
+name: SDK Publish
+
+on:
+  push:
+    tags:
+      - 'sdk/v*'
+
+jobs:
+  publish:
+    name: Build and publish @velo-protocol/pay
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    defaults:
+      run:
+        working-directory: velo-sdk
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'npm'
+          cache-dependency-path: velo-sdk/package-lock.json
+
+      - run: npm ci
+      - run: npm run build
+      - run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

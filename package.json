@@ -1,0 +1,28 @@
+{
+  "name": "velo-protocol-backend",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "velo-backend",
+    "velo-sdk"
+  ],
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "lint": "turbo run lint",
+    "migrate": "npm run migrate --workspace=velo-backend"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^19.0.0",
+    "@commitlint/config-conventional": "^19.0.0",
+    "husky": "^9.0.0",
+    "turbo": "^2.0.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "passport-custom": "^1.1.1"
+  }
+}
